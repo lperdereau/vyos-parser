@@ -1,24 +1,3 @@
-const vyattaConfig = `
-/* Vyatta configuration */
-interfaces {
-  /* Ethernet interface */
-  ethernet eth0 {
-
-    address 192.168.1.1/24
-  }
-}
-system {
-  host-name vyatta
-}
-protocols {
-  static {
-    route 0.0.0.0/0 {
-      next-hop 192.168.1.254
-    }
-  }
-}
-`;
-
 type Config = {
   [key: string]: Section;
 };
@@ -78,26 +57,14 @@ function parseSection(input: string): Section | null {
   return null;
 }
 
-function parseNode(node: string, comment: string | null): { section: Section, jump: number } {
-  // Parse each line to determine kind of node
-  // use respectiv parse method to determine value type
-  // A section is determined by the presence of a `{` and ends with a `}`, not on the same line, forming a block
-  // A value is determined by the presence of a `key value` pair
-  // A comment is determined by the presence of `/*` and `*/` on the same line
-
-  // Find section start, run recursively until section end
-  // return function to parent
-
-  // Find value, return value
-  // Find comment, return comment
-
+function parseNode(node: string, comment: string | null = null): { section: Section, jump: number } {
   const lines = node.split("\n");
   let currentSection: Section = {};
-  let currentComment: string | null = comment;
-
-  if (currentComment) {
-    currentSection.comment = currentComment;
+  if (comment) {
+    currentSection.comment = comment;
   }
+
+  let currentComment: string | null = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -112,7 +79,7 @@ function parseNode(node: string, comment: string | null): { section: Section, ju
     if (section) {
       const { section: childSection, jump} = parseNode(lines.slice(i+1).join("\n"), currentComment);
       currentSection[line.replace(" {", "")] = childSection;
-      i += jump;
+      i += jump+1;
       continue;
     }
 
@@ -129,19 +96,206 @@ function parseNode(node: string, comment: string | null): { section: Section, ju
   return { section: currentSection, jump: 0 };
 }
 
-console.log(parseValue("duplex auto"));
-console.log(parseValue("a"));
+function parseConfig(conf: string): Config | null {
+  const lines = conf.split("\n");
+  let config = {};
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
 
-console.log(parseComment("/* Ethernet interface */"));
-console.log(parseComment("a"));
+    const comment = parseComment(line);
+    if (comment) {
+      continue;
+    }
 
-console.log(parseSection("      interfaces {    "));
-const test = `protocols {
-  static {
-    /* Default route */
-    route 0.0.0.0/0 {
-      next-hop 192.168.1.254
+    const section = parseSection(line);
+    if (section) {
+      const { section: childSection, jump} = parseNode(lines.slice(i+1).join("\n"), null);
+      section[Object.keys(section)[0]] = childSection;
+      config = { ...config, ...section };
+      i += jump;
+      continue;
     }
   }
+  return config;
+}
+
+const test = `container {
+    name ui {
+        allow-host-networks
+        environment NODE_TLS_REJECT_UNAUTHORIZED {
+            value 0
+        }
+        image ghcr.io/lperdereau/vyos-ui:v0.0.1-alpha4
+        volume socket {
+            destination /run/api.sock
+            source /run/api.sock
+        }
+    }
+}
+firewall {
+    group {
+        address-group ADR_NMS_ENIX_V4 {
+            address 193.19.211.182
+            description nms.enix.org
+        }
+        network-group NET_ENIXPRIV_V4 {
+            description "Public addresses of ENIX-PRIV"
+            network 193.19.208.32/29
+        }
+    }
+    ipv4 {
+        name ALLOW_ALL {
+            default-action accept
+        }
+        name DENY_ALL {
+            default-action drop
+        }
+    }
+    zone LAN {
+        default-action drop
+        from LOCAL {
+            firewall {
+                name ALLOW_ALL
+            }
+        }
+        member {
+            interface eth1
+        }
+    }
+    zone LOCAL {
+        from WAN {
+            firewall {
+                name ALLOW_ALL
+            }
+        }
+        local-zone
+    }
+    zone WAN {
+        from LOCAL {
+            firewall {
+                name ALLOW_ALL
+            }
+        }
+        member {
+            interface eth0
+        }
+    }
+}
+interfaces {
+    ethernet eth0 {
+        address dhcp
+        hw-id bc:24:11:82:a3:e4
+        mtu 1500
+    }
+    ethernet eth1 {
+        hw-id bc:24:11:3b:46:93
+    }
+    loopback lo {
+    }
+}
+protocols {
+    bgp {
+        neighbor 10.1.1.1 {
+            address-family {
+                ipv4-unicast {
+                }
+            }
+            remote-as 4001
+        }
+        neighbor 10.1.1.2 {
+            address-family {
+                ipv4-multicast {
+                }
+            }
+            remote-as 4003
+        }
+        parameters {
+            router-id 10.14.99.190
+        }
+        system-as 64517
+    }
+}
+service {
+    https {
+        allow-client {
+            address 193.19.208.33/29
+            address 0.0.0.0/0
+        }
+        api {
+            graphql {
+                authentication {
+                    type key
+                }
+                introspection
+            }
+            keys {
+                id KID {
+                    key ****************
+                }
+                id lperdereau {
+                    key ****************
+                }
+            }
+            rest {
+                debug
+            }
+        }
+        enable-http-redirect
+        port 443
+    }
+    ntp {
+        allow-client {
+            address 0.0.0.0/0
+            address ::/0
+        }
+        server time1.vyos.net {
+        }
+        server time2.vyos.net {
+        }
+        server time3.vyos.net {
+        }
+    }
+    ssh {
+        client-keepalive-interval 180
+        port 22
+    }
+}
+system {
+    config-management {
+        commit-revisions 100
+    }
+    conntrack {
+        modules {
+            ftp
+            h323
+            nfs
+            pptp
+            sip
+            sqlnet
+            tftp
+        }
+    }
+    domain-search enix.fr
+    host-name vyos-lperdereau-1
+    login {
+        user vyos {
+            authentication {
+                encrypted-password ****************
+            }
+        }
+    }
+    /* DNS */
+    name-server 8.8.8.8
+    syslog {
+        global {
+            facility all {
+                level notice
+            }
+            facility local7 {
+                level debug
+            }
+        }
+    }
 }`;
-console.log(JSON.stringify(parseNode(test, null).section));
+// console.log(JSON.stringify(parseNode(test)));
+console.log(JSON.stringify(parseConfig(test)));
