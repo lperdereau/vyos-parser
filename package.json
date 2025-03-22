@@ -1,5 +1,12 @@
 {
+  "name": "vyos-parser",
+  "version": "0.0.1",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
-    "ts-node": "^10.9.2"
+    "typescript": "^5.8.2"
   }
 }
