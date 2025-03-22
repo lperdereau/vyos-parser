@@ -1,6 +1,6 @@
 <h1 align="center">Welcome to vyos-parser 👋</h1>
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.0.1-blue.svg?cacheSeconds=2592000" />
+  <img alt="Version" src="https://img.shields.io/github/v/tag/lperdereau/vyos-parser" />
 </p>
 
 > parse and generate vyos configuration in Typescript
