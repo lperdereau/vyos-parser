@@ -15,6 +15,18 @@ container {
     }
   }
 }
+firewall {
+  group {
+    address-group SINGLE_IP {
+      address 78.41.204.36
+      description ns1.google.com
+    }
+    network-group NETWORK {
+      description \"Private Network\"
+      network 192.168.0.1/24
+    }
+  }
+}
 protocols {
   static {
     route 0.0.0.0/0 {
@@ -35,6 +47,18 @@ const assert = {
       "volume socket": {
         "destination": "/run/api.sock",
         "source": "/run/api.sock"
+      }
+    }
+  },
+  "firewall": {
+    "group": {
+      "address-group SINGLE_IP": {
+        "address": "78.41.204.36",
+        "description": "ns1.google.com"
+      },
+      "network-group NETWORK": {
+        "description": "\"Private Network\"",
+        "network": "192.168.0.1/24"
       }
     }
   },

@@ -93,7 +93,7 @@ function parseNode(node: string, comment: string | null = null): { section: Sect
 
     const key_value = line.split(" ");
     const key = key_value[0];
-    const value = key_value.length === 2 ? key_value[1] : true;
+    const value = key_value.length > 1 ? key_value.slice(1).join(" ") : true;
     currentSection[key] = value;
   }
   return { section: currentSection, jump: 0 };
