@@ -4,7 +4,7 @@ export type Config = {
 
 export type QuotedString = string;
 
-export type Value = QuotedString | string | number | boolean;
+export type Value = QuotedString | string | string[] | number | boolean;
 
 export type Section = { comment?: string } & {
   [key: string]: Value | Section;
@@ -36,14 +36,6 @@ function parseComment(comment: string): string | null {
 
 }
 
-function parseValue(value: string): Value | null {
-  const matches = value.trim().match(ValueRegex);
-  if (matches) {
-    return matches[2];
-  }
-  return null;
-}
-
 function parseSection(input: string): Section | null {
   let matches = input.trim().match(SectionRegex);
   if (matches) {
@@ -55,6 +47,19 @@ function parseSection(input: string): Section | null {
     return { [`${matches[1]} ${matches[2]}`]: {} };
   }
   return null;
+}
+
+function parseValue(line: string, currentSection: Section) {
+  const key_value = line.split(" ");
+  const key = key_value[0];
+  let value: Value = key_value.length > 1 ? key_value.slice(1).join(" ") : true;
+
+  if ( key in currentSection) {
+    if (typeof currentSection[key] === 'string') { value = [currentSection[key], value as string] }
+    else value = [...currentSection[key] as string[], value as string]
+  }
+
+  currentSection[key] = value
 }
 
 function parseNode(node: string, comment: string | null = null): { section: Section, jump: number } {
@@ -91,10 +96,7 @@ function parseNode(node: string, comment: string | null = null): { section: Sect
       return { section: currentSection, jump };
     }
 
-    const key_value = line.split(" ");
-    const key = key_value[0];
-    const value = key_value.length > 1 ? key_value.slice(1).join(" ") : true;
-    currentSection[key] = value;
+    parseValue(line, currentSection);
   }
   return { section: currentSection, jump: 0 };
 }

@@ -19,6 +19,7 @@ firewall {
   group {
     address-group SINGLE_IP {
       address 78.41.204.36
+      address 1.1.1.1
       description ns1.google.com
     }
     network-group NETWORK {
@@ -53,7 +54,7 @@ const assert = {
   "firewall": {
     "group": {
       "address-group SINGLE_IP": {
-        "address": "78.41.204.36",
+        "address": ["78.41.204.36", "1.1.1.1"],
         "description": "ns1.google.com"
       },
       "network-group NETWORK": {

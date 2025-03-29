@@ -22,7 +22,13 @@ export function generateConfig(node: Config | Section, indent=0): string {
       result += `${' '.repeat(indent*2)}${key}\n`;
     }
 
-    if (typeof value === 'object') {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        result += `${' '.repeat(indent*2)}${key} ${item}\n`;
+      }
+    }
+
+    if (typeof value === 'object' && !Array.isArray(value)) {
       result += `${' '.repeat(indent*2)}${key} {\n`;
       result += generateConfig(value, indent+1);
       result += `${' '.repeat(indent*2)}}\n`;
